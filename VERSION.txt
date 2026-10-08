@@ -1,0 +1,2 @@
+20261008nfac1
+115/10/08 nfac1：南方通訊處版（由意外險保障試算 ac2 複製）：品牌改「富邦人壽 南方通訊處」、正式南方 logo、業務員資料與南方旅平險共用（nf-agent-profile-v1）、草稿 key 改 nf-acc-quote-draft-v1、旅平險連結改 toperic1836.github.io
