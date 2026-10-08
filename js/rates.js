@@ -40,7 +40,8 @@ window.QUOTE_RATES = {
   ADM_RATES: [   53,   66,   80,  119,  186,  239 ],
 
   /* ---------- ADH 骨力勇意外骨折傷害保險附約 ----------
-   * 單位：元／每萬元保額（年繳）。已與官方 DM 第 4 頁「年繳費率表」逐格核對一致。
+   * 單位：元／每萬元保額（年繳）。已與官方 DM 第 4 頁「年繳費率表」逐格核對一致（115/10/08 再以 DM 115.01.01 版 30 格核對一致）。
+   * 115/10/08 依 ADH 投保規則 114/08/26：最低保額 10 萬；累計最高 200 萬且當件 ≤ 主約保額 5 倍（與原設定一致）。
    * 保額上限：已有富邦主約 → 200 萬；另買 OLA6 → min(200 萬, OLA6 保額 × 5) */
   ADH_RATES: {
     child:     [   48,    0,    0,    0,    0,    0 ],   // 14 歲(含)以下
@@ -163,7 +164,7 @@ window.QUOTE_RATES = {
     adg:  { max: 2000, step: 10 },  // ADG 保額上限（萬元）
     tmr:  { max: 20, adgRatio: 0.1 }, // TMR 保額上限 20 萬，且不超過 ADG 保額 × 10%（無條件捨去）
     adm:  { max: 2000, step: 100 }, // ADM 日額上限（元）
-    adh:  { max: 200, mainMultiple: 5, step: 10 }, // ADH 上限 200 萬；另買 OLA6 時不得超過 OLA6 保額 × 5
+    adh:  { min: 10, max: 200, mainMultiple: 5, step: 10, deathMinExactAge: 15 }, // ADH 上限 200 萬；另買 OLA6 時不得超過 OLA6 保額 × 5
     maxHospitalDays: 90,        // 骨折情境「實際住院日數」輸入上限
     adhCareRatio: 0.02,         // ADH 意外傷害骨折關懷保險金 = 骨折保險金 × 2%
     admBoneSupportRatio: 0.5,   // ADM 未住院骨折給付 = 剩餘骨折日數 × 日額 × 50%

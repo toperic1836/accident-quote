@@ -224,15 +224,22 @@
       c = compute(d);
     }
     c.blocked = blocked;
+    // ADH 條款第十三、十四條：訂約時實際年齡未滿 15 足歲者，ADH 身故、失能保險金於滿 15 足歲之日起才生效 → 不列入身故／失能合計
+    var pb = parseRocBirth(d.rocBirth);
+    c.adhUnder15 = !!(pb && pb.exactAge >= 0 && pb.exactAge < RULES.adh.deathMinExactAge && c.effectiveAdh > 0);
+    if (c.adhUnder15) {
+      c.accidentDeathTotal -= c.effectiveAdh * 1e4;
+      c.disabilityTotal -= c.effectiveAdh;
+    }
     return { c: c, s: d };
   }
 
   function quoteHtml(c, s) {
     var p = c.premiums;
     var adg = s.adgAmount, adm = s.admDaily, adhE = c.effectiveAdh, tmrE = c.effectiveTmr;
-    var deathSrc = [adg > 0 ? "ADG " + money.format(adg) + "萬" : "", adhE > 0 ? "ADH " + money.format(adhE) + "萬" : ""].filter(Boolean);
+    var deathSrc = [adg > 0 ? "ADG " + money.format(adg) + "萬" : "", adhE > 0 && !c.adhUnder15 ? "ADH " + money.format(adhE) + "萬" : ""].filter(Boolean);
     var burnSrc = [adg > 0 ? "ADG 依程度 10%／40%" : "", adhE > 0 ? "ADH 25%" : ""].filter(Boolean);
-    var disSrc = [adg > 0 ? "ADG" : "", adhE > 0 ? "ADH" : ""].filter(Boolean);
+    var disSrc = [adg > 0 ? "ADG" : "", adhE > 0 && !c.adhUnder15 ? "ADH" : ""].filter(Boolean);
     var disNote = disSrc.join("＋") + " 依失能等級 5%～100%" + (disSrc.length > 1 ? " 合計" : "") + "試算";
     var olaPeriodic = p ? p.periodic.ola : undefined;
     var totalOk = !!(p && p.total !== null);
@@ -275,12 +282,13 @@
     }
     h += '<section class="cmp-card q-benefits"><h2 class="sec-title big">保障內容<small>符合各附約條款時給付</small></h2>' +
       '<div class="cmp-scroll"><table class="cmp q-ben"><thead><tr><th class="k">保障項目</th><th>給付金額</th></tr></thead><tbody>';
-    h += brow("1", "意外身故", c.accidentDeathTotal === 0 ? "不投保" : wan.format(c.accidentDeathTotal / 1e4) + " 萬",
-      c.accidentDeathTotal === 0 ? "此保障項目未投保" : deathSrc.join("＋") + "，符合各附約條款時" + (deathSrc.length > 1 ? "合計" : "試算"));
+    var u15 = c.adhUnder15 ? "ADH " + money.format(adhE) + " 萬於實際年齡滿 15 足歲之日起生效" : "";
+    h += brow("1", "意外身故", c.accidentDeathTotal === 0 ? (u15 ? "滿15足歲起生效" : "不投保") : wan.format(c.accidentDeathTotal / 1e4) + " 萬",
+      c.accidentDeathTotal === 0 ? (u15 || "此保障項目未投保") : deathSrc.join("＋") + "，符合各附約條款時" + (deathSrc.length > 1 ? "合計" : "試算") + (u15 ? "；" + u15 : ""));
     h += brow("2", "重大燒燙傷", c.majorBurnTotal === 0 ? "不投保" : "最高 " + wan.format(c.majorBurnTotal / 1e4) + " 萬",
       c.majorBurnTotal === 0 ? "此保障項目未投保" : burnSrc.join("＋") + "，符合各附約條款時" + (burnSrc.length > 1 ? "合計" : "試算"));
-    h += brow("3", "意外失能", c.disabilityTotal === 0 ? "不投保" : wan.format(c.disabilityTotal * RULES.disabilityMinRatio) + "～" + wan.format(c.disabilityTotal) + " 萬",
-      c.disabilityTotal === 0 ? "此保障項目未投保" : disNote);
+    h += brow("3", "意外失能", c.disabilityTotal === 0 ? (u15 ? "滿15足歲起生效" : "不投保") : wan.format(c.disabilityTotal * RULES.disabilityMinRatio) + "～" + wan.format(c.disabilityTotal) + " 萬",
+      c.disabilityTotal === 0 ? (u15 || "此保障項目未投保") : disNote + (u15 ? "；" + u15 : ""));
     h += brow("4", "意外醫療實支實付", tmrE === 0 ? "不投保" : "最高 " + tmrE + " 萬",
       tmrE === 0 ? "此方案未納入 TMR" : "TMR 同一次傷害、依實際醫療費用與條款限額給付");
     h += brow("5", "意外住院／門診手術", adm === 0 ? "不投保" : "住院 " + money.format(adm) + "元／日｜門診手術 " + money.format(adm) + "元／次",
@@ -304,6 +312,7 @@
     var notes = ["附約須搭配有效主約；OLA6 最低 " + RULES.ola6.min + " 萬元。附約額度與搭配規定仍須覆核。",
       "骨折情境：" + esc(c.bone.label) + "（" + esc(c.fracture.label) + "）、實際住院 " + c.hospitalDays + " 日；ADH 骨折保險金＝保額 × 骨折別表比例 × 骨折程度，另加骨折保險金 2% 關懷金；ADM 未住院骨折給付＝（骨折日數 − 住院日數）× 日額 × 50%。"];
     if (c.age >= 0 && c.age < 15) notes.push("未滿15足歲：身故保險金依保險法第107條規定辦理，實際給付以條款為準。");
+    if (c.adhUnder15) notes.push("ADH 條款：訂約時實際年齡未滿 15 足歲者，ADH 意外身故及失能保險金於滿 15 足歲之日起才生效，上表意外身故／失能未列入 ADH。");
     if (blockedMsg) notes.push(blockedMsg);
     notes.push("本頁僅供試算；實際承保、保費與理賠，以正式文件及富邦人壽審核為準。");
     h += '<section class="notes-wrap"><h2 class="sec-title big">試算依據與重要提醒</h2><ul class="notes">' +
@@ -352,8 +361,9 @@
     showText($("olaError"), raw.olaError ||
       (!s.hasExistingMain && s.olaAmount < RULES.ola6.min ? "OLA6 壽險保額最低 " + RULES.ola6.min + " 萬元（離開欄位時自動補足）" : ""));
     showText($("tmrError"), s.tmrAmount !== raw.effectiveTmr ? "目前依規則以 " + raw.effectiveTmr + " 萬元試算" : "");
-    $("adhNote").textContent = "0＝不投保｜上限 " + raw.maxAdh + " 萬元";
-    showText($("adhError"), s.adhAmount !== raw.effectiveAdh ? "已依搭配規則改以 " + raw.effectiveAdh + " 萬元試算" : "");
+    $("adhNote").textContent = "0＝不投保｜10～" + raw.maxAdh + " 萬元";
+    showText($("adhError"), s.adhAmount !== raw.effectiveAdh ? "已依搭配規則改以 " + raw.effectiveAdh + " 萬元試算"
+      : s.adhAmount > 0 && s.adhAmount < RULES.adh.min ? "ADH 最低保額 " + RULES.adh.min + " 萬元（離開欄位時自動補足）" : "");
     showText($("adgError"), s.adgAmount % RULES.adg.step ? "提醒：原工具以 " + RULES.adg.step + " 萬元為級距，請確認此保額可投保" : "");
     showText($("admError"), s.admDaily % RULES.adm.step ? "提醒：原工具以 " + RULES.adm.step + " 元為級距，請確認此日額可投保" : "");
 
@@ -706,6 +716,7 @@
     on("tmrAmount", "input", function (t) { state.tmrAmount = clampNum(t.value, 0, RULES.tmr.max); });
     on("admDaily", "input", function (t) { state.admDaily = clampNum(t.value, 0, RULES.adm.max); });
     on("adhAmount", "input", function (t) { state.adhAmount = clampNum(t.value, 0, compute(state).maxAdh); });
+    on("adhAmount", "blur", function () { if (state.adhAmount > 0 && state.adhAmount < RULES.adh.min) state.adhAmount = Math.min(RULES.adh.min, compute(state).maxAdh); }); // ADH 最低 10 萬（投保規則）
     on("boneId", "change", function (t) { state.boneId = t.value; chartView.mode = "bone"; });
     on("fractureType", "change", function (t) { state.fractureType = t.value; chartView.mode = "bone"; });
     on("hospitalDays", "input", function (t) { state.hospitalDaysInput = t.value; });
